@@ -1,13 +1,13 @@
-import { HardhatUserConfig } from 'hardhat/config';
+import { HardhatUserConfig } from "hardhat/config";
 import "@nomiclabs/hardhat-ethers";
-import '@typechain/hardhat';
+import "@typechain/hardhat";
+import dotenv from "dotenv";
+dotenv.config();
 
-import {apiKey} from './.secret';
-
-const RPC = `https://eth-mainnet.g.alchemy.com/v2/${apiKey}`;
+const RPC = `https://eth-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`;
 
 const config: HardhatUserConfig = {
-  solidity: { version: '0.7.6' },
+  solidity: { version: "0.7.6" },
   networks: {
     hardhat: {
       // loggingEnabled: true,
@@ -17,9 +17,9 @@ const config: HardhatUserConfig = {
         blockNumber: 16775792,
       },
       accounts: {
-        accountsBalance: '1000000000000000000000000', // 1 mil ether
+        accountsBalance: "1000000000000000000000000", // 1 mil ether
       },
-    }
+    },
   },
   mocha: {
     timeout: 40000,

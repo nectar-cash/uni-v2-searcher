@@ -12,3 +12,6 @@ export const transferEventSignature =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 export const syncEventSignature =
   "0x1c411e9a96e071241c2f21f7726b17ae89e3cab4c78be50e062b03a9fffbbad1";
+export const GAS_CAP = parseFloat(process.env.GAS_CAP as string);
+export const apiKey = process.env.ALCHEMY_API_KEY as string;
+export const dbUri = process.env.DB_URI as string;

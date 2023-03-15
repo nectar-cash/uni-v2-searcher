@@ -2,8 +2,9 @@ import { TransactionRequest } from "@ethersproject/providers";
 import dotenv from "dotenv";
 import { ethers } from "hardhat";
 const helpers = require("@nomicfoundation/hardhat-network-helpers");
-import { apiKey } from "../.secret";
 import {
+  apiKey,
+  GAS_CAP,
   SUSHISWAP_FACTORY,
   SUSHISWAP_ROUTER,
   syncEventSignature,
@@ -15,6 +16,8 @@ import {
 import { TransactionIntent } from "./types";
 import IUniswapV2Pair from "./abi/IUniswapV2Pair.json";
 import IUniswapV2Factory from "./abi/IUniswapV2Factory.json";
+import { insertOne } from "./db";
+import { Transaction } from "ethers";
 
 dotenv.config();
 
@@ -33,7 +36,6 @@ let flashBot: any;
     );
     const FlashBot = await ethers.getContractFactory("FlashBot");
     flashBot = await FlashBot.deploy(WETH);
-    //console.log(blockNumber, flashBot.address);
     await processTransaction(
       "0x02f9017201118404dc7fc585042d98fe2a8302b6e294d9e1ce17f2641f24ae83637ab66a2cca9c378b9f80b9010418cbafe500000000000000000000000000000000000000000000034d8beab7d0203a567c0000000000000000000000000000000000000000000000002493c0cf4ecaa16e00000000000000000000000000000000000000000000000000000000000000a00000000000000000000000004750e475f88d185b1413bc6e15d29e639f065dad00000000000000000000000000000000000000000000000000000000641052ef0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000808507121b80c02388fad14726482e061b8da827000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2c080a0aa71b51b216295eded064978bfb6720cafddd6329048a16f95b61939fa93dfeca026d2e71f857ac022111b9aacb68cd101bfc0c60872dcdd3f4de8c52fabffdfec"
     );
@@ -48,7 +50,7 @@ export async function processTransaction(
   console.log("-".repeat(64));
   console.log("Processing transaction", _tx?.hash);
   const tx = ethers.utils.parseTransaction(rawTx); // remove this if we have tx intent object
-  console.log(tx);
+  //console.log(tx);
   /**
    * Filtering only uniswap and sushiswap transactions, further we can take any tx with "Sync" event inside and check if it's a pool with WETH
    */
@@ -102,7 +104,8 @@ export async function processTransaction(
 
     await Promise.all(
       pools.map(
-        async (pool) => await checkPoolProfit(pool, tx.to === UNISWAP_V2_ROUTER)
+        async (pool) =>
+          await checkPoolProfit(pool, tx.to === UNISWAP_V2_ROUTER, tx)
       )
     );
 
@@ -110,7 +113,11 @@ export async function processTransaction(
   }
 }
 
-async function checkPoolProfit(pool: string, isUniswap: boolean) {
+async function checkPoolProfit(
+  pool: string,
+  isUniswap: boolean,
+  tx: Transaction
+) {
   const uniV2Pool = new ethers.Contract(pool, IUniswapV2Pair, ethers.provider);
   const factory = new ethers.Contract(
     isUniswap ? SUSHISWAP_FACTORY : UNISWAP_V2_FACTORY,
@@ -125,8 +132,19 @@ async function checkPoolProfit(pool: string, isUniswap: boolean) {
       console.log("pool not found");
       return;
     }
-    console.log(pool, pool2, flashBot.address);
     const res = await flashBot.getProfit(pool, pool2);
+    if (res.profit.toNumber < GAS_CAP) {
+      console.log("profit too low");
+      return;
+    }
+    try {
+      await insertOne({
+        profit: ethers.utils.formatEther(res.profit.toString()),
+        tx,
+      });
+    } catch (e) {
+      console.log("error writing to db", e);
+    }
     console.log(`Profit : ${ethers.utils.formatEther(res.profit.toString())}`);
   }
 }
