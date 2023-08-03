@@ -54,10 +54,20 @@ const volume = utils.parseEther("0.01"); // need to be collection of test volume
       console.log("buy on sushi");
       const value = BigNumber.from(tx.value); //amount of user's ETH
 
-      const [amountOutTokenSushi, amountInWETHUniV3] = await Promise.all([
-        sushiRouter.getAmountsIn(volume, [TOKEN, WETH]),
-        quoter.callStatic.quoteExactInputSingle(WETH, TOKEN, FEE, value, 0),
-      ]);
+      const volume = value.mul(10).div(100); // 10% of user's ETH
+
+      const [amountOutTokenSushi, amountOutFractionTokenSushi] =
+        await Promise.all([
+          sushiRouter.getAmountsOut(value, [WETH, TOKEN]), // amount of tokens for user's ETH on Sushi
+          sushiRouter.getAmountsOut(value.mul(90).div(100), [WETH, TOKEN]), // amount of tokens for fraction of ETH on Sushi
+          sushiRouter.getAmountsOut(value.mul(90).div(100), [WETH, TOKEN]), // amount of tokens for fraction of ETH on Sushi
+
+          sushiRouter.getAmountsOut(value.mul(80).div(100), [WETH, TOKEN]), // amount of tokens for fraction of ETH on Sushi
+
+          sushiRouter.getAmountsOut(value.mul(70).div(100), [WETH, TOKEN]), // amount of tokens for fraction of ETH on Sushi
+
+          sushiRouter.getAmountsOut(value.mul(60).div(100), [WETH, TOKEN]), // amount of tokens for fraction of ETH on Sushi
+        ]);
 
       console.log(
         "Tokens to get weth back on SUSHI:",
